@@ -30,12 +30,8 @@
 .DS_Store
 .env
 
-# Additional optimizations for Render deployment
-README.md
-SECURITY.md
-LICENSE
+# Additional optimizations for deployment
 docs/
-*.md
 docker-compose.yml
 docker-compose.override.yml
 Dockerfile*
@@ -53,6 +49,7 @@ Thumbs.db
 render-env-template.txt
 RENDER_DEPLOYMENT.md
 DOCKER_RENDER_DEPLOYMENT.md
+FLY_DEPLOYMENT.md
 data/
 pg_data/
 redis_data/
