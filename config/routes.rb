@@ -8,10 +8,10 @@ Rails.application.routes.draw do
       mount Sidekiq::Web => '/jobs'
     end
   end
-
   root 'dashboard#index'
 
   get 'up' => 'rails/health#show'
+  get 'health' => 'health#show'
   get 'manifest' => 'pwa#manifest'
 
   devise_for :users,

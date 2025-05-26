@@ -49,10 +49,12 @@ end
 #
 # preload_app!
 
-if ENV['MULTITENANT'] != 'true' || ENV['DEMO'] == 'true'
-  require_relative '../lib/puma/plugin/redis_server'
-  require_relative '../lib/puma/plugin/sidekiq_embed'
-
-  plugin :sidekiq_embed
-  plugin :redis_server
-end
+# Temporarily disable plugins for stable Render deployment
+# Re-enable these once the basic deployment is working
+# if ENV['MULTITENANT'] != 'true' || ENV['DEMO'] == 'true'
+#   require_relative '../lib/puma/plugin/redis_server'
+#   require_relative '../lib/puma/plugin/sidekiq_embed'
+#   
+#   plugin :sidekiq_embed
+#   plugin :redis_server
+# end

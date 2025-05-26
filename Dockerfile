@@ -79,10 +79,13 @@ COPY ./tmp ./tmp
 COPY LICENSE README.md Rakefile config.ru .version ./
 COPY .version ./public/version
 
-COPY --from=download /fonts/GoNotoKurrent-Regular.ttf /fonts/GoNotoKurrent-Bold.ttf /fonts/DancingScript-Regular.otf /fonts/OFL.txt /fonts
-COPY --from=download /fonts/FreeSans.ttf /usr/share/fonts/freefont
-COPY --from=download /pdfium-linux/lib/libpdfium.so /usr/lib/libpdfium.so
-COPY --from=download /pdfium-linux/licenses/pdfium.txt /usr/lib/libpdfium-LICENSE.txt
+# Make scripts executable
+RUN chmod +x ./bin/*
+
+COPY --from=download /fonts/GoNotoKurrent-Regular.ttf /fonts/GoNotoKurrent-Bold.ttf /fonts/DancingScript-Regular.otf /fonts/OFL.txt /fonts/
+COPY --from=download /fonts/FreeSans.ttf /usr/share/fonts/freefont/
+COPY --from=download /pdfium-linux/lib/libpdfium.so /usr/lib/
+COPY --from=download /pdfium-linux/licenses/pdfium.txt /usr/lib/
 COPY --from=webpack /app/public/packs ./public/packs
 
 RUN ln -s /fonts /app/public/fonts
@@ -92,4 +95,4 @@ WORKDIR /data/docuseal
 ENV WORKDIR=/data/docuseal
 
 EXPOSE 3000
-CMD ["/app/bin/bundle", "exec", "puma", "-C", "/app/config/puma.rb", "--dir", "/app"]
+CMD ["/app/bin/bundle", "exec", "puma", "-C", "/app/config/puma_render.rb", "--dir", "/app"]

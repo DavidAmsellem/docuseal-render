@@ -1,0 +1,128 @@
+#!/bin/bash
+
+# DocuSeal Render Deployment Script
+set -e
+
+echo "🚀 Iniciando deployment de DocuSeal en Render con Docker"
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Function to print colored output
+print_status() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Check if git repo is clean
+if [ -n "$(git status --porcelain)" ]; then
+    print_warning "Hay cambios sin commitear en el repositorio."
+    read -p "¿Deseas continuar? (y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        print_error "Deployment cancelado por el usuario."
+        exit 1
+    fi
+fi
+
+# Check if render.yaml exists
+if [ ! -f "render.yaml" ]; then
+    print_error "No se encontró render.yaml. ¿Estás en el directorio correcto?"
+    exit 1
+fi
+
+# Check if Dockerfile exists
+if [ ! -f "Dockerfile" ]; then
+    print_error "No se encontró Dockerfile. ¿Estás en el directorio correcto?"
+    exit 1
+fi
+
+print_status "Verificando configuración..."
+
+# Validate Dockerfile
+print_status "Validando Dockerfile..."
+if ! docker build --no-cache -f Dockerfile . -t docuseal-test > /dev/null 2>&1; then
+    print_error "Error al construir la imagen Docker localmente."
+    print_error "Por favor, verifica tu Dockerfile y resuelve los errores antes de continuar."
+    exit 1
+fi
+print_success "Dockerfile válido ✓"
+
+# Clean up test image
+docker rmi docuseal-test > /dev/null 2>&1 || true
+
+# Check git remote
+if ! git remote get-url origin > /dev/null 2>&1; then
+    print_error "No se encontró remote origin. Configura tu repositorio Git primero."
+    exit 1
+fi
+
+REPO_URL=$(git remote get-url origin)
+print_status "Repositorio: $REPO_URL"
+
+# Update render.yaml with correct repo URL if needed
+if grep -q "tu-usuario" render.yaml; then
+    print_warning "render.yaml contiene placeholder 'tu-usuario'"
+    print_warning "Actualiza el repositorio en render.yaml manualmente antes de continuar."
+    print_warning "Cambia: https://github.com/tu-usuario/docuseal.git"
+    print_warning "Por tu URL real: $REPO_URL"
+fi
+
+# Commit and push changes
+print_status "Preparando código para deployment..."
+
+# Add all changes
+git add .
+
+# Check if there are changes to commit
+if git diff --staged --quiet; then
+    print_status "No hay cambios para commitear."
+else
+    # Commit changes
+    COMMIT_MSG="Configure Docker deployment for Render - $(date '+%Y-%m-%d %H:%M:%S')"
+    git commit -m "$COMMIT_MSG"
+    print_success "Cambios commiteados: $COMMIT_MSG"
+fi
+
+# Push to origin
+print_status "Subiendo cambios a GitHub..."
+git push origin $(git branch --show-current)
+print_success "Código subido a repositorio ✓"
+
+echo
+print_success "🎉 ¡Preparación completa!"
+echo
+echo "Próximos pasos:"
+echo "1. Ve a https://render.com"
+echo "2. Haz clic en 'New' → 'Blueprint'"
+echo "3. Conecta tu repositorio de GitHub"
+echo "4. Render detectará automáticamente el archivo render.yaml"
+echo "5. Configura las variables de entorno si es necesario"
+echo "6. Haz clic en 'Apply' para iniciar el deployment"
+echo
+echo "Variables de entorno que se configuran automáticamente:"
+echo "  ✓ SECRET_KEY_BASE (generada automáticamente)"
+echo "  ✓ DATABASE_URL (desde PostgreSQL service)"
+echo "  ✓ REDIS_URL (desde Redis service)"
+echo "  ✓ RAILS_ENV=production"
+echo "  ✓ RAILS_SERVE_STATIC_FILES=true"
+echo
+echo "Tu aplicación estará disponible en: https://docuseal.onrender.com"
+echo "(o el nombre que hayas configurado)"
+echo
+print_status "Para monitorear el deployment, ve a Render Dashboard → Logs"

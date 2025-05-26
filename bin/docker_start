@@ -1,0 +1,26 @@
+#!/bin/bash
+set -e
+
+echo "=== DocuSeal Docker Deployment Start ==="
+echo "Environment: ${RAILS_ENV:-production}"
+echo "Port: ${PORT:-3000}"
+echo "Web Concurrency: ${WEB_CONCURRENCY:-2}"
+echo "Max Threads: ${RAILS_MAX_THREADS:-5}"
+
+# Change to app directory
+cd /app
+
+# Ensure data directory exists
+mkdir -p /data/docuseal
+
+# Database setup only if DATABASE_URL is present
+if [ -n "$DATABASE_URL" ]; then
+  echo "Setting up database..."
+  bundle exec rails db:create db:migrate 2>/dev/null || bundle exec rails db:migrate
+else
+  echo "No DATABASE_URL found, skipping database setup"
+fi
+
+# Start the application
+echo "Starting DocuSeal with Puma (Docker mode)..."
+exec bundle exec puma -C config/puma_render.rb --dir /app

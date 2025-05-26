@@ -1,13 +1,10 @@
 services:
   - type: web
     name: docuseal
-    env: ruby
+    env: docker
     repo: https://github.com/docusealco/docuseal.git
-    buildCommand: |
-      bundle install
-      yarn install
-      bundle exec rails assets:precompile
-    startCommand: bundle exec puma -C config/puma.rb
+    dockerfilePath: ./Dockerfile
+    dockerContext: ./
     envVars:
       - key: RAILS_ENV
         value: production
@@ -30,6 +27,12 @@ services:
         value: 2
       - key: RAILS_MAX_THREADS
         value: 5
+      - key: RENDER
+        value: true
+      - key: FORCE_SSL
+        value: true
+    healthCheckPath: /health
+    autoDeploy: true
 
   - type: redis
     name: docuseal-redis

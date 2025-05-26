@@ -1,0 +1,40 @@
+# Variables de entorno requeridas para Render deployment
+
+# === CORE RAILS CONFIG ===
+RAILS_ENV=production
+SECRET_KEY_BASE=<será generado automáticamente por Render>
+RAILS_SERVE_STATIC_FILES=true
+RAILS_LOG_TO_STDOUT=true
+
+# === DATABASE ===
+DATABASE_URL=<conectar a PostgreSQL database en Render>
+
+# === REDIS (Opcional) ===
+REDIS_URL=<conectar a Redis service en Render>
+
+# === PUMA CONFIG ===
+WEB_CONCURRENCY=2
+RAILS_MAX_THREADS=5
+RAILS_MIN_THREADS=5
+
+# === EMAIL CONFIG (Opcional - ejemplo con Gmail) ===
+# SMTP_ADDRESS=smtp.gmail.com
+# SMTP_PORT=587
+# SMTP_DOMAIN=gmail.com
+# SMTP_USERNAME=tu-email@gmail.com
+# SMTP_PASSWORD=tu-app-password
+# SMTP_AUTHENTICATION=plain
+# SMTP_ENABLE_STARTTLS_AUTO=true
+
+# === STORAGE CONFIG (Opcional - ejemplo con AWS S3) ===
+# AWS_ACCESS_KEY_ID=tu-access-key
+# AWS_SECRET_ACCESS_KEY=tu-secret-key
+# AWS_REGION=us-east-1
+# S3_BUCKET=tu-bucket-name
+
+# === APP CONFIG ===
+# HOST=tu-app.onrender.com
+# FORCE_SSL=true
+
+# === RENDER SPECIFIC ===
+RENDER=true
