@@ -2,7 +2,7 @@ services:
   - type: web
     name: docuseal
     env: docker
-    repo: https://github.com/docusealco/docuseal.git
+    repo: https://github.com/DavidAmsellem/docuseal-render.git
     dockerfilePath: ./Dockerfile
     dockerContext: ./
     envVars:
