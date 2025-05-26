@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: docuseal
+    env: ruby
+    repo: https://github.com/docusealco/docuseal.git
+    buildCommand: |
+      bundle install
+      yarn install
+      bundle exec rails assets:precompile
+    startCommand: bundle exec puma -C config/puma.rb
+    envVars:
+      - key: RAILS_ENV
+        value: production
+      - key: SECRET_KEY_BASE
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: docuseal-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: docuseal-redis
+          property: connectionString
+      - key: RAILS_SERVE_STATIC_FILES
+        value: true
+      - key: RAILS_LOG_TO_STDOUT
+        value: true
+      - key: WEB_CONCURRENCY
+        value: 2
+      - key: RAILS_MAX_THREADS
+        value: 5
+
+  - type: redis
+    name: docuseal-redis
+    plan: starter
+
+databases:
+  - name: docuseal-db
+    databaseName: docuseal
+    user: docuseal

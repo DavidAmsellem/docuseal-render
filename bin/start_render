@@ -1,0 +1,28 @@
+#!/bin/bash
+set -e
+
+echo "=== DocuSeal Render Deployment Start ==="
+echo "Environment: ${RAILS_ENV:-development}"
+echo "Port: ${PORT:-3000}"
+echo "Web Concurrency: ${WEB_CONCURRENCY:-0}"
+echo "Max Threads: ${RAILS_MAX_THREADS:-5}"
+
+# Database setup
+echo "Setting up database..."
+bundle exec rails db:create db:migrate
+
+# Asset precompilation (if not done in build)
+if [ ! -d "public/packs" ]; then
+  echo "Precompiling assets..."
+  bundle exec rails assets:precompile
+fi
+
+# Start the application
+echo "Starting DocuSeal with Puma..."
+if [ -f "config/puma_render.rb" ]; then
+  echo "Using Render-optimized Puma configuration"
+  exec bundle exec puma -C config/puma_render.rb
+else
+  echo "Using default Puma configuration"
+  exec bundle exec puma -C config/puma.rb
+fi
