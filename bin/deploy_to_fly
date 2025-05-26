@@ -1,0 +1,171 @@
+#!/bin/bash
+
+# Fly.io Deployment Script for DocuSeal
+# Este script automatiza el deployment de DocuSeal en Fly.io
+
+set -e
+
+echo "🚀 Iniciando deployment de DocuSeal en Fly.io..."
+
+# Colores para output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Función para logging
+log() {
+    echo -e "${GREEN}[$(date +'%Y-%m-%d %H:%M:%S')] $1${NC}"
+}
+
+warn() {
+    echo -e "${YELLOW}[WARNING] $1${NC}"
+}
+
+error() {
+    echo -e "${RED}[ERROR] $1${NC}"
+    exit 1
+}
+
+# Verificar que flyctl está instalado
+if ! command -v flyctl &> /dev/null; then
+    error "flyctl no está instalado. Instálalo desde: https://fly.io/docs/getting-started/installing-flyctl/"
+fi
+
+# Verificar que estamos logueados en Fly.io
+if ! flyctl auth whoami &> /dev/null; then
+    error "No estás logueado en Fly.io. Ejecuta: flyctl auth login"
+fi
+
+# Verificar que Docker está corriendo
+if ! docker info &> /dev/null; then
+    error "Docker no está ejecutándose. Inicia Docker y vuelve a intentar."
+fi
+
+log "✅ Verificaciones preliminares completadas"
+
+# Crear la aplicación si no existe
+APP_NAME="docuseal-${USER:-$(whoami)}"
+echo -e "${BLUE}Nombre de la aplicación: $APP_NAME${NC}"
+
+if ! flyctl apps list | grep -q "$APP_NAME"; then
+    log "📱 Creando nueva aplicación en Fly.io..."
+    flyctl apps create "$APP_NAME" --region mad
+else
+    log "📱 Usando aplicación existente: $APP_NAME"
+fi
+
+# Actualizar fly.toml con el nombre correcto
+sed -i.bak "s/app = \".*\"/app = \"$APP_NAME\"/" fly.toml
+
+# Verificar que el Dockerfile existe
+if [ ! -f "Dockerfile" ]; then
+    error "Dockerfile no encontrado en el directorio actual"
+fi
+
+log "🐳 Construyendo imagen Docker..."
+
+# Configurar variables de entorno necesarias
+log "⚙️ Configurando variables de entorno..."
+
+# Variables obligatorias
+flyctl secrets set SECRET_KEY_BASE="$(openssl rand -hex 64)" --app "$APP_NAME"
+
+# Variables opcionales con valores por defecto
+flyctl secrets set \
+    RAILS_ENV=production \
+    RAILS_SERVE_STATIC_FILES=true \
+    RAILS_LOG_TO_STDOUT=true \
+    WEB_CONCURRENCY=2 \
+    RAILS_MAX_THREADS=5 \
+    FORCE_SSL=true \
+    --app "$APP_NAME"
+
+# Crear base de datos PostgreSQL si no existe
+log "🗄️ Configurando base de datos PostgreSQL..."
+DB_NAME="${APP_NAME}-db"
+
+if ! flyctl postgres list | grep -q "$DB_NAME"; then
+    log "Creando nueva base de datos PostgreSQL..."
+    flyctl postgres create --name "$DB_NAME" --region mad --vm-size shared-cpu-1x --volume-size 3
+    
+    # Adjuntar la base de datos a la aplicación
+    flyctl postgres attach "$DB_NAME" --app "$APP_NAME"
+else
+    log "Base de datos existente encontrada: $DB_NAME"
+fi
+
+# Crear volumen para almacenamiento persistente
+log "💾 Configurando almacenamiento persistente..."
+VOLUME_NAME="${APP_NAME}-data"
+
+if ! flyctl volumes list --app "$APP_NAME" | grep -q "$VOLUME_NAME"; then
+    log "Creando volumen para datos persistentes..."
+    flyctl volumes create "$VOLUME_NAME" --size 10gb --region mad --app "$APP_NAME"
+else
+    log "Volumen existente encontrado: $VOLUME_NAME"
+fi
+
+# Actualizar fly.toml para incluir el volumen
+if ! grep -q "mounts" fly.toml; then
+    cat >> fly.toml << EOF
+
+[[mounts]]
+  source = "$VOLUME_NAME"
+  destination = "/data"
+EOF
+fi
+
+log "🚀 Desplegando aplicación..."
+
+# Deploy con configuración específica para Rails
+flyctl deploy \
+    --app "$APP_NAME" \
+    --config fly.toml \
+    --dockerfile Dockerfile \
+    --build-arg RAILS_ENV=production
+
+log "🏥 Verificando health checks..."
+
+# Esperar a que la aplicación esté saludable
+timeout 300 bash -c "
+    while true; do
+        if flyctl status --app '$APP_NAME' | grep -q 'healthy'; then
+            echo 'Aplicación saludable!'
+            break
+        fi
+        echo 'Esperando a que la aplicación esté saludable...'
+        sleep 10
+    done
+"
+
+# Obtener la URL de la aplicación
+APP_URL=$(flyctl info --app "$APP_NAME" | grep -o 'https://[^[:space:]]*\.fly\.dev')
+
+log "✅ Deployment completado exitosamente!"
+echo -e "${GREEN}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🎉 DocuSeal está ahora desplegado en Fly.io!"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "📱 Aplicación: $APP_NAME"
+echo "🌍 URL: $APP_URL"
+echo "🗄️ Base de datos: $DB_NAME"
+echo "💾 Volumen: $VOLUME_NAME"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo -e "${NC}"
+
+log "📋 Comandos útiles:"
+echo "  - Ver logs: flyctl logs --app $APP_NAME"
+echo "  - Ver estado: flyctl status --app $APP_NAME"
+echo "  - Consola Rails: flyctl ssh console --app $APP_NAME -C 'rails console'"
+echo "  - Escalar: flyctl scale count 2 --app $APP_NAME"
+
+# Abrir la aplicación en el navegador
+if command -v open &> /dev/null; then
+    open "$APP_URL"
+elif command -v xdg-open &> /dev/null; then
+    xdg-open "$APP_URL"
+fi
+
+log "🎊 ¡Deployment completado! Tu aplicación DocuSeal está lista en $APP_URL"

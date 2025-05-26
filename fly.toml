@@ -1,0 +1,78 @@
+# fly.toml app configuration file generated for docuseal on 2025-05-27T01:00:00Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = "docuseal"
+primary_region = "mad"
+
+[build]
+
+[deploy]
+  release_command = "bundle exec rails db:prepare"
+
+[env]
+  RAILS_ENV = "production"
+  RAILS_SERVE_STATIC_FILES = "true"
+  RAILS_LOG_TO_STDOUT = "true"
+  WEB_CONCURRENCY = "2"
+  RAILS_MAX_THREADS = "5"
+  FORCE_SSL = "true"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1
+  processes = ["app"]
+
+  [[http_service.checks]]
+    grace_period = "1s"
+    interval = "30s"
+    method = "get"
+    path = "/health"
+    protocol = "http"
+    restart_limit = 0
+    timeout = "10s"
+    tls_skip_verify = false
+
+[[services]]
+  protocol = "tcp"
+  internal_port = 3000
+  processes = ["app"]
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 25
+    soft_limit = 20
+
+  [[services.tcp_checks]]
+    grace_period = "1s"
+    interval = "15s"
+    restart_limit = 0
+    timeout = "2s"
+
+  [[services.http_checks]]
+    interval = "10s"
+    grace_period = "5s"
+    method = "get"
+    path = "/health"
+    protocol = "http"
+    restart_limit = 0
+    timeout = "2s"
+    tls_skip_verify = false
+
+[[vm]]
+  memory = "1gb"
+  cpu_kind = "shared"
+  cpus = 1

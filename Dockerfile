@@ -95,4 +95,4 @@ WORKDIR /data/docuseal
 ENV WORKDIR=/data/docuseal
 
 EXPOSE 3000
-CMD ["/app/bin/bundle", "exec", "puma", "-C", "/app/config/puma_render.rb", "--dir", "/app"]
+CMD ["/app/bin/bundle", "exec", "puma", "-C", "/app/config/puma_fly.rb", "--dir", "/app"]
