@@ -33,10 +33,10 @@ services:
         value: true
     healthCheckPath: /health
     autoDeploy: true
-
   - type: redis
     name: docuseal-redis
     plan: starter
+    ipAllowList: []
 
 databases:
   - name: docuseal-db
